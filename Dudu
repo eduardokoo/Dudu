@@ -1,0 +1,128 @@
+-- LocalScript: GUI com botão para carregar script remoto (ex: Pastefy)
+-- Coloque este LocalScript em StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local guiName = "PastefyLoaderGUI"
+
+-- URL raw do Pastefy (substitua pelo seu /raw/ID)
+local PASTEFY_RAW_URL = "https://pastefy.app/raw/abc123" -- <- troque aqui
+
+-- Cria GUI simples
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = guiName
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 10
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 300, 0, 140)
+frame.Position = UDim2.new(0.5, -150, 0.4, -70)
+frame.BackgroundTransparency = 0.15
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.BorderSizePixel = 0
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Visible = false
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 36)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.Text = "Loader Pastefy"
+title.TextScaled = true
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.Font = Enum.Font.GothamBold
+
+local executeBtn = Instance.new("TextButton", frame)
+executeBtn.Size = UDim2.new(0.9, 0, 0, 44)
+executeBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
+executeBtn.Text = "Executar script do Pastefy"
+executeBtn.TextScaled = true
+executeBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+executeBtn.BorderSizePixel = 0
+executeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0.9, 0, 0, 30)
+closeBtn.Position = UDim2.new(0.05, 0, 0.75, 0)
+closeBtn.Text = "Fechar (Esc)"
+closeBtn.TextScaled = true
+closeBtn.BackgroundColor3 = Color3.fromRGB(45,45,45)
+closeBtn.BorderSizePixel = 0
+closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+
+-- Adiciona GUI ao PlayerGui
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Função para tentar carregar o código remoto
+local function tryLoadRemoteScript(url)
+    if url == nil or url == "" then
+        warn("URL inválida. Edite a variável PASTEFY_RAW_URL no script.")
+        return
+    end
+
+    -- tentativa segura: pcall para evitar crash se HttpGet falhar
+    local ok, res = pcall(function()
+        return game:HttpGet(url, true)
+    end)
+
+    if not ok then
+        warn("Falha ao buscar o script remoto: "..tostring(res))
+        return
+    end
+
+    -- tenta executar o código retornado
+    local ok2, res2 = pcall(function()
+        local f = loadstring(res)
+        if f then
+            return f()
+        else
+            error("loadstring retornou nil.")
+        end
+    end)
+
+    if not ok2 then
+        warn("Erro ao executar o script remoto: "..tostring(res2))
+    else
+        print("Script remoto executado com sucesso.")
+    end
+end
+
+-- Botões
+executeBtn.MouseButton1Click:Connect(function()
+    -- pequeno feedback
+    executeBtn.Text = "Carregando..."
+    executeBtn.Active = false
+
+    -- chama loader (pode demorar se a internet for lenta)
+    tryLoadRemoteScript(PASTEFY_RAW_URL)
+
+    -- restaura o botão
+    executeBtn.Text = "Executar script do Pastefy"
+    executeBtn.Active = true
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    frame.Visible = false
+end)
+
+-- Toggle com tecla (por exemplo: T)
+local TOGGLE_KEY = Enum.KeyCode.T
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == TOGGLE_KEY then
+        frame.Visible = not frame.Visible
+    end
+end)
+
+-- Fecha com Esc
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.Escape then
+        frame.Visible = false
+    end
+end)
+
+-- Mensagem inicial no Console
+print("[PastefyLoader] carregado. Pressione '"..TOGGLE_KEY.Name.."' para abrir.")
